@@ -1,2 +1,4 @@
 # system-inspector
-A lightweight, portable Python tool for collecting, displaying, and exporting detailed PC system information.
+First public release of System Inspector.
+Standard-library-only Python system information tool with TXT, JSON, and ZIP export support.
+Includes system, CPU, memory, storage, network, path, runtime, and local port reporting where supported.
