@@ -1,12 +1,11 @@
-#Add initial PC diagnostic tool
 #!/usr/bin/env python3
 """
 System Inspector
-Products Over Prompts - public demo build
+Products Over Prompts - v1.0.0
 
 Standard-library only. No shell commands or external programs.
 Collects useful system, CPU, memory, storage, network, path, runtime,
-and local port information, then prints or saves reports.
+and local port information, then displays or exports reports.
 """
 
 from __future__ import annotations
@@ -361,35 +360,44 @@ def report_stem() -> str:
     return f"system_inspector_{dt.datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
 
-def save_txt(report: dict[str, Any]) -> Path:
-    path = program_directory() / f"{report_stem()}.txt"
-    path.write_text(render_text(report), encoding="utf-8")
-    return path
+def render_json(report: dict[str, Any]) -> str:
+    return json.dumps(report, indent=2, ensure_ascii=False)
 
 
-def save_json(report: dict[str, Any]) -> Path:
-    path = program_directory() / f"{report_stem()}.json"
-    path.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
-    return path
+def save_report(report: dict[str, Any], save_txt: bool, save_json: bool) -> list[Path]:
+    """Save selected report formats automatically next to the program."""
+    folder = program_directory()
+    folder.mkdir(parents=True, exist_ok=True)
 
-
-def save_both(report: dict[str, Any]) -> tuple[Path, Path]:
     stem = report_stem()
-    base = program_directory()
-    txt = base / f"{stem}.txt"
-    js = base / f"{stem}.json"
-    txt.write_text(render_text(report), encoding="utf-8")
-    js.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
-    return txt, js
+    saved_paths: list[Path] = []
+
+    if save_txt:
+        txt_path = folder / f"{stem}.txt"
+        txt_path.write_text(render_text(report), encoding="utf-8")
+        saved_paths.append(txt_path)
+
+    if save_json:
+        json_path = folder / f"{stem}.json"
+        json_path.write_text(render_json(report), encoding="utf-8")
+        saved_paths.append(json_path)
+
+    return saved_paths
 
 
-def save_zip(report: dict[str, Any]) -> Path:
+def save_zip_report(report: dict[str, Any]) -> Path:
+    """Save TXT + JSON together inside a ZIP next to the program."""
+    folder = program_directory()
+    folder.mkdir(parents=True, exist_ok=True)
+
     stem = report_stem()
-    path = program_directory() / f"{stem}.zip"
-    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as zf:
-        zf.writestr(f"{stem}.txt", render_text(report))
-        zf.writestr(f"{stem}.json", json.dumps(report, indent=2, ensure_ascii=False))
-    return path
+    zip_path = folder / f"{stem}.zip"
+
+    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr(f"{stem}.txt", render_text(report))
+        archive.writestr(f"{stem}.json", render_json(report))
+
+    return zip_path
 
 
 def clear_screen() -> None:
@@ -495,56 +503,124 @@ def print_menu() -> None:
     print("\n" + "=" * 72)
     print(f"{APP_NAME} v{APP_VERSION}")
     print("=" * 72)
-    print("\n[1] Print readable TXT report")
-    print("\n[2] Print raw JSON report")
-    print("\n[3] Save TXT")
-    print("\n[4] Save JSON")
-    print("\n[5] Save TXT + JSON")
-    print("\n[6] Save ZIP (TXT + JSON)")
-    print("\n[7] Exit\n")
+    print("\n[1] View Reports")
+    print("\n[2] Save Reports\n")
+    print("[3] Exit\n")
+    print()
+
+
+def display_report_menu() -> None:
+    clear_screen()
+    print("View Reports")
+    print()
+    print("[1] TXT")
+    print()
+    print("[2] JSON")
+    print()
+    print("[3] Back")
+    print()
+
+    try:
+        choice = input("Select an option: ").strip()
+    except (EOFError, KeyboardInterrupt):
+        return
+
+    if choice == "3":
+        return
+
+    if choice not in {"1", "2"}:
+        print("\nInvalid choice.")
+        pause()
+        return
+
+    clear_screen()
+    print("Collecting system information...")
+    report = build_report()
+
+    if choice == "1":
+        print("\n" + render_text(report))
+    else:
+        print("\n" + render_json(report))
+
+    pause()
+
+
+def save_report_menu() -> None:
+    clear_screen()
+    print("Save Reports")
+    print()
+    print("[1] TXT")
+    print()
+    print("[2] JSON")
+    print()
+    print("[3] TXT + JSON")
+    print()
+    print("[4] ZIP")
+    print()
+    print("[5] Back")
+    print()
+
+    try:
+        choice = input("Select an option: ").strip()
+    except (EOFError, KeyboardInterrupt):
+        return
+
+    if choice == "5":
+        return
+
+    if choice not in {"1", "2", "3", "4"}:
+        print("\nInvalid choice.")
+        pause()
+        return
+
+    clear_screen()
+    print("Collecting system information...")
+    report = build_report()
+
+    try:
+        if choice == "4":
+            saved_path = save_zip_report(report)
+            print(f"\nSaved ZIP report:\n{saved_path}")
+        else:
+            saved_paths = save_report(
+                report,
+                save_txt=choice in {"1", "3"},
+                save_json=choice in {"2", "3"},
+            )
+
+            if len(saved_paths) == 1:
+                print(f"\nSaved report:\n{saved_paths[0]}")
+            else:
+                print("\nSaved reports:")
+                for path in saved_paths:
+                    print(path)
+    except (OSError, zipfile.BadZipFile) as exc:
+        print(f"\nCould not save report: {exc}")
+
+    pause()
 
 
 def main() -> int:
     while True:
         clear_screen()
         print_menu()
+
         try:
             choice = input("Choose an option: ").strip()
         except (EOFError, KeyboardInterrupt):
             print("\nExiting.")
             return 0
 
-        if choice == "7":
+        if choice == "1":
+            display_report_menu()
+        elif choice == "2":
+            save_report_menu()
+        elif choice == "3":
             print("Exiting.")
             return 0
-        if choice not in {"1", "2", "3", "4", "5", "6"}:
+        else:
             print("\nInvalid choice.")
             pause()
-            continue
-
-        # Start each valid action on a clean screen.
-        clear_screen()
-        print("Collecting system information...")
-        report = build_report()
-
-        try:
-            if choice == "1":
-                print("\n" + render_text(report))
-            elif choice == "2":
-                print("\n" + json.dumps(report, indent=2, ensure_ascii=False))
-            elif choice == "3":
-                print(f"\nSaved TXT report:\n{save_txt(report)}")
-            elif choice == "4":
-                print(f"\nSaved JSON report:\n{save_json(report)}")
-            elif choice == "5":
-                txt, js = save_both(report)
-                print(f"\nSaved reports:\n{txt}\n{js}")
-            elif choice == "6":
-                print(f"\nSaved ZIP report:\n{save_zip(report)}")
-        except OSError as exc:
-            print(f"\nCould not save report: {exc}")
-
-        pause()
 
 
 if __name__ == "__main__":
