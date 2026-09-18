@@ -1,11 +1,33 @@
 #!/usr/bin/env python3
 """
-System Inspector
-Products Over Prompts - v1.0.0
+System Inspector v1.0.0
+Products Over Prompts
 
-Standard-library only. No shell commands or external programs.
+A lightweight, standard-library-only system information tool.
+
 Collects useful system, CPU, memory, storage, network, path, runtime,
 and local port information, then displays or exports reports.
+
+No shell commands, external programs, or third-party dependencies
+are required.
+
+Features:
+- Operating system information
+- CPU details
+- Memory information
+- Storage information
+- Network details
+- Local TCP/UDP ports
+- System paths
+- Python runtime information
+- TXT export
+- JSON export
+- ZIP report bundle
+
+How to Run:
+Requires Python 3.
+
+    python system-inspector.py
 """
 
 from __future__ import annotations
